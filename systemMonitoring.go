@@ -3,23 +3,28 @@ import (
 	"encoding/json"
 	"github.com/shirou/gopsutil/cpu"
 	"time"
+	"github.com/shirou/gopsutil/host"
 )
 
 //MonitoringData represents a sample of monitoring data
 type monitoringData struct{
 	//Unix time of this sample
-	Time int64
+	Time             int64
 	//Tick for Time update (eg. CPUPercent)
-	UpdateTime time.Duration
+	UpdateTime       time.Duration
 	//Computer Name
-	ComputerName string
+	ComputerName     string
+	OperatingSystem  string
+	Platform         string
+	PlatformFamily   string
+	ProcessNumber	 uint64
 	//All CPU values
-	CPUTime []cpu.CPUTimesStat
-	GlobalCPUTime []cpu.CPUTimesStat
-	CPUInfo []cpu.CPUInfoStat
+	CPUTime          []cpu.CPUTimesStat
+	GlobalCPUTime    []cpu.CPUTimesStat
+	CPUInfo          []cpu.CPUInfoStat
 	GlobalCPUPercent float64
-	CPUPercent []float64
-	CPUCounts int
+	CPUPercent       []float64
+	CPUCounts        int
 	LogicalCPUCounts int
 	//All disks values
 
@@ -27,10 +32,21 @@ type monitoringData struct{
 
 //NewMonitoringData creates and fill a monitoringData
 func NewMonitoringData(updateTime time.Duration) (monitorData monitoringData, err error){
+	returnMonitoringData := monitoringData{}
+
+	//Time info
+	returnMonitoringData.Time = time.Now().UnixNano()
+	returnMonitoringData.UpdateTime = updateTime
+
+	//Host info
+	err = initHostInfo(&returnMonitoringData)
+
+	if err != nil{
+		return returnMonitoringData,err
+	}
 
 
-
-	return nil, nil
+	return returnMonitoringData, nil
 }
 
 //JSON() converts a monitoringData to JSON
@@ -48,4 +64,20 @@ func (self *monitoringData) JSON() (jsonString string, e error){
 func (self *monitoringData) String() string{
 	str, _ := self.JSON()
 	return str
+}
+
+func initHostInfo(monitorData *monitoringData) error{
+	hostInfo, err := host.HostInfo()
+
+	if err != nil{
+		return err
+	}
+
+	monitorData.ComputerName = hostInfo.Hostname
+	monitorData.OperatingSystem = hostInfo.OS
+	monitorData.Platform = hostInfo.Platform
+	monitorData.PlatformFamily = hostInfo.PlatformFamily
+	monitorData.ProcessNumber = hostInfo.Procs
+
+	return nil
 }
