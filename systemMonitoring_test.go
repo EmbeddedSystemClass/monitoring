@@ -3,7 +3,7 @@ package monitoring
 import (
 	"testing"
 	"time"
-	"fmt"
+	"encoding/json"
 )
 
 func TestNewMonitoringData(t *testing.T) {
@@ -21,7 +21,18 @@ func TestMonitoringDataJSON(t *testing.T) {
 		t.Error("Error in NewMonitoringData should be nil : ", err)
 	}
 
-	fmt.Println(m.String())
+	var obj monitoringData
+	j, err := m.JSON()
+
+	if err != nil{
+		t.Error("Error in JSON() should be nil : ", err)
+	}
+
+	err = json.Unmarshal([]byte(j), &obj)
+
+	if err != nil{
+		t.Error("Malformated JSON", err)
+	}
 }
 
 func TestMonitoringDataString(t *testing.T) {
@@ -31,5 +42,16 @@ func TestMonitoringDataString(t *testing.T) {
 		t.Error("Error in NewMonitoringData should be nil : ", err)
 	}
 
-	fmt.Println(m.JSON())
+	var obj monitoringData
+	j, err := m.JSON()
+
+	if err != nil{
+		t.Error("Error in JSON() should be nil : ", err)
+	}
+
+	err = json.Unmarshal([]byte(j), &obj)
+
+	if err != nil {
+		t.Error("Malformated JSON", err)
+	}
 }

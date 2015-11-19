@@ -1,0 +1,15 @@
+language: go
+go:
+- tip
+before_install:
+- go get github.com/axw/gocov/gocov
+- go get github.com/mattn/goveralls
+- go get github.com/bradfitz/goimports
+script:
+- go test -v -covermode=count -coverprofile=coverage.out
+- goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+- gofmt -w .
+- goimports -w .
+env:
+  global:
+    secure: MYzsGlaATcRSFWycK9MXIK+BTe70Bmw7CbDbszOYweE0GiS0kqfEDJYu5irnwrGLj/HzC8KkvXRv21SPJGYbUVkVNYAi+qMBpsE76cKBmEZo85/5gyjTH7LFEMvtRNeqTTfuqKDD5ASoQdnHrYcmP0J/4a5eBhHPuYBQmQhloxZEIn6KHaA2I2YMk6BoRt8hYFIsc1SOgPbjiD7r+SexZFjGb++M/mh93OSlFF5PkMyzv9bRDSy/i8vMsEideVKH7B+Z4tfsOqdonvcFmWxekdCviPpD3ft796GveoiLlTazncBlAGaX9vqO3hiLQRJFyjmcTiEbpcUyQN4yRuVedqjpQCRbaCCZpqbH+DqrkG3MGQZI+0Vk55P5urE3ylzKpmt+5QPqHonVsK2emS/1wrvfeSU2N4bhW9wcbyBDbjBosdAI6Q9Ebk62gZ9xJVsNNTE6z9g1su/QiMFATtJMDyhYrvroryZ5uhuHikCKUCD6Cu3RutrwazeZCsZU+miLyY3xDVf1IAlJhSfkepnX9yjRZ7KuDbnfzJqkn/8Olv61y8L1q2JQW3oAMQWwHSnTD4G7qXTgzysIutKGe0WCcpCb4aP0WJ4MyzQJlbsPaVjARhRKctYu8mpT6SYfeY7yWgoeMyVX8VYF8XNPJgkHITepOTU6X38EX8Lk2cUqUWw=
