@@ -52,7 +52,7 @@ type monitoringData struct {
 }
 
 //NewMonitoringData creates and fill a monitoringData
-func NewMonitoringData(updateTime time.Duration) (monitorData monitoringData, err error) {
+func NewMonitoringData(updateTime time.Duration) (monitorData *monitoringData, err error) {
 	returnMonitoringData := monitoringData{}
 
 	//Time info
@@ -78,7 +78,7 @@ func NewMonitoringData(updateTime time.Duration) (monitorData monitoringData, er
 	//Disk info
 	err = initDiskInfo(&returnMonitoringData)
 
-	return returnMonitoringData, nil
+	return &returnMonitoringData, nil
 }
 
 //JSON() converts a monitoringData to JSON
