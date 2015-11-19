@@ -9,6 +9,8 @@ import (
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/disk"
+	"math"
 )
 
 //MonitoringData represents a sample of monitoring data
@@ -46,6 +48,7 @@ type monitoringData struct {
 	//All network values
 	NetworkIOCounter []net.NetIOCountersStat
 	//All disks values
+	DiskStats map[string]disk.DiskUsageStat
 }
 
 //NewMonitoringData creates and fill a monitoringData
@@ -86,6 +89,13 @@ func NewMonitoringData(updateTime time.Duration) (monitorData monitoringData, er
 
 	returnMonitoringData.NetworkIOCounter = netIOCounter
 
+	//Disk info
+	err = initDiskInfo(&returnMonitoringData)
+
+	if err != nil {
+		return returnMonitoringData, err
+	}
+
 	return returnMonitoringData, nil
 }
 
@@ -94,7 +104,7 @@ func (self *monitoringData) JSON() (jsonString string, e error) {
 	b, err := json.Marshal(*self)
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	return string(b), err
@@ -143,6 +153,8 @@ func initMemoryInfo(monitorData *monitoringData) error {
 	monitorData.UsedSwap = swapInfo.Used
 	monitorData.FreeSwap = swapInfo.Free
 	monitorData.SwapUsedPercent = swapInfo.UsedPercent
+
+	return nil
 }
 
 func initCPUInfo(monitorData *monitoringData) error {
@@ -170,33 +182,25 @@ func initCPUInfo(monitorData *monitoringData) error {
 		return err
 	}
 
-	monitorData.GlobalCPUTime = globalTime[0]
+	monitorData.GlobalCPUTime = globalTime
 
 	var percentWaitGroup sync.WaitGroup
 
 	percentWaitGroup.Add(2)
 
-	go func(monitorData *monitoringData, wg *sync.WaitGroup) {
+	go func(monitorData *monitoringData, wg *sync.WaitGroup){
 		defer wg.Done()
-		cpuPercent, err := cpu.CPUPercent(monitorData.UpdatePeriod, true)
-
-		if err != nil {
-			return err
-		}
+		cpuPercent, _ := cpu.CPUPercent(monitorData.UpdatePeriod, true)
 
 		monitorData.CPUPercent = cpuPercent
-	}(monitorData)
+	}(monitorData, &percentWaitGroup)
 
-	go func(monitorData *monitoringData, wg *sync.WaitGroup) {
+	go func(monitorData *monitoringData, wg *sync.WaitGroup){
 		defer wg.Done()
-		globalCpuPercent, err := cpu.CPUPercent(monitorData.UpdatePeriod, false)
-
-		if err != nil {
-			return err
-		}
+		globalCpuPercent, _ := cpu.CPUPercent(monitorData.UpdatePeriod, false)
 
 		monitorData.GlobalCPUPercent = globalCpuPercent[0]
-	}(monitorData)
+	}(monitorData, &percentWaitGroup)
 
 	percentWaitGroup.Wait()
 
@@ -215,4 +219,32 @@ func initCPUInfo(monitorData *monitoringData) error {
 	}
 
 	monitorData.LogicalCPUCounts = logicalCpuCounts
+
+	return nil
+}
+
+func initDiskInfo(monitorData *monitoringData) error{
+	partitions, err := disk.DiskPartitions(true)
+	monitorData.DiskStats = make(map[string]disk.DiskUsageStat)
+
+	if err != nil{
+		return err
+	}
+
+	for d := range partitions {
+		if partitions[d].Device != "none"{
+			usage, err := disk.DiskUsage(partitions[d].Mountpoint)
+
+			if err != nil {
+				continue
+			}
+
+			if usage != nil {
+				if !math.IsNaN(usage.UsedPercent){
+					monitorData.DiskStats[partitions[d].Device] = *usage
+				}
+			}
+		}
+	}
+	return nil
 }
