@@ -22,11 +22,7 @@ func TestMonitoringDataJSON(t *testing.T) {
 	}
 
 	var obj monitoringData
-	j, err := m.JSON()
-
-	if err != nil{
-		t.Error("Error in JSON() should be nil : ", err)
-	}
+	j := m.String()
 
 	err = json.Unmarshal([]byte(j), &obj)
 
