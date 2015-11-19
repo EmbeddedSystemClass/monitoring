@@ -119,132 +119,116 @@ func (self *monitoringData) String() string {
 func initHostInfo(monitorData *monitoringData) error {
 	hostInfo, err := host.HostInfo()
 
-	if err != nil {
-		return err
+	if hostInfo != nil{
+		monitorData.ComputerName = hostInfo.Hostname
+		monitorData.OperatingSystem = hostInfo.OS
+		monitorData.Platform = hostInfo.Platform
+		monitorData.PlatformFamily = hostInfo.PlatformFamily
+		monitorData.ProcessNumber = hostInfo.Procs
 	}
 
-	monitorData.ComputerName = hostInfo.Hostname
-	monitorData.OperatingSystem = hostInfo.OS
-	monitorData.Platform = hostInfo.Platform
-	monitorData.PlatformFamily = hostInfo.PlatformFamily
-	monitorData.ProcessNumber = hostInfo.Procs
-
-	return nil
+	return err
 }
 
 func initMemoryInfo(monitorData *monitoringData) error {
 	memoryInfo, err := mem.VirtualMemory()
-	if err != nil {
-		return err
-	}
-
 	swapInfo, err := mem.SwapMemory()
-	if err != nil {
-		return err
+
+	if memoryInfo != nil && swapInfo != nil{
+		monitorData.AvailableMemory = memoryInfo.Available
+		monitorData.TotalMemory = memoryInfo.Total
+		monitorData.UsedMemory = memoryInfo.Used
+		monitorData.UsedPercent = memoryInfo.UsedPercent
+		monitorData.FreeMemory = memoryInfo.Free
+		monitorData.SharedMemory = memoryInfo.Shared
+		monitorData.TotalSwapMemory = swapInfo.Total
+		monitorData.UsedSwap = swapInfo.Used
+		monitorData.FreeSwap = swapInfo.Free
+		monitorData.SwapUsedPercent = swapInfo.UsedPercent
 	}
 
-	monitorData.AvailableMemory = memoryInfo.Available
-	monitorData.TotalMemory = memoryInfo.Total
-	monitorData.UsedMemory = memoryInfo.Used
-	monitorData.UsedPercent = memoryInfo.UsedPercent
-	monitorData.FreeMemory = memoryInfo.Free
-	monitorData.SharedMemory = memoryInfo.Shared
-	monitorData.TotalSwapMemory = swapInfo.Total
-	monitorData.UsedSwap = swapInfo.Used
-	monitorData.FreeSwap = swapInfo.Free
-	monitorData.SwapUsedPercent = swapInfo.UsedPercent
-
-	return nil
+	return err
 }
 
 func initCPUInfo(monitorData *monitoringData) error {
 	info, err := cpu.CPUInfo()
 
-	if err != nil {
+	if info != nil{
+		monitorData.CPUInfo = info
+
+		monitorData.CPUModelName = monitorData.CPUInfo[0].ModelName
+
+		t, err := cpu.CPUTimes(true)
+
+		if t != nil {
+			monitorData.CPUTime = t
+
+			globalTime, err := cpu.CPUTimes(false)
+
+			if globalTime != nil{
+				monitorData.GlobalCPUTime = globalTime
+
+				var percentWaitGroup sync.WaitGroup
+
+				percentWaitGroup.Add(2)
+
+				go func(monitorData *monitoringData, wg *sync.WaitGroup){
+					defer wg.Done()
+					cpuPercent, _ := cpu.CPUPercent(monitorData.UpdatePeriod, true)
+
+					monitorData.CPUPercent = cpuPercent
+				}(monitorData, &percentWaitGroup)
+
+				go func(monitorData *monitoringData, wg *sync.WaitGroup){
+					defer wg.Done()
+					globalCpuPercent, _ := cpu.CPUPercent(monitorData.UpdatePeriod, false)
+
+					monitorData.GlobalCPUPercent = globalCpuPercent[0]
+				}(monitorData, &percentWaitGroup)
+
+				percentWaitGroup.Wait()
+
+				cpuCounts, err := cpu.CPUCounts(false)
+
+				monitorData.CPUCounts = cpuCounts
+
+				logicalCpuCounts, err := cpu.CPUCounts(false)
+
+				monitorData.LogicalCPUCounts = logicalCpuCounts
+
+				return err
+			}
+
+			return err
+		}
+
 		return err
 	}
 
-	monitorData.CPUInfo = info
-
-	monitorData.CPUModelName = monitorData.CPUInfo[0].ModelName
-
-	t, err := cpu.CPUTimes(true)
-
-	if err != nil {
-		return err
-	}
-
-	monitorData.CPUTime = t
-
-	globalTime, err := cpu.CPUTimes(false)
-
-	if err != nil {
-		return err
-	}
-
-	monitorData.GlobalCPUTime = globalTime
-
-	var percentWaitGroup sync.WaitGroup
-
-	percentWaitGroup.Add(2)
-
-	go func(monitorData *monitoringData, wg *sync.WaitGroup){
-		defer wg.Done()
-		cpuPercent, _ := cpu.CPUPercent(monitorData.UpdatePeriod, true)
-
-		monitorData.CPUPercent = cpuPercent
-	}(monitorData, &percentWaitGroup)
-
-	go func(monitorData *monitoringData, wg *sync.WaitGroup){
-		defer wg.Done()
-		globalCpuPercent, _ := cpu.CPUPercent(monitorData.UpdatePeriod, false)
-
-		monitorData.GlobalCPUPercent = globalCpuPercent[0]
-	}(monitorData, &percentWaitGroup)
-
-	percentWaitGroup.Wait()
-
-	cpuCounts, err := cpu.CPUCounts(false)
-
-	if err != nil {
-		return err
-	}
-
-	monitorData.CPUCounts = cpuCounts
-
-	logicalCpuCounts, err := cpu.CPUCounts(false)
-
-	if err != nil {
-		return err
-	}
-
-	monitorData.LogicalCPUCounts = logicalCpuCounts
-
-	return nil
+	return err
 }
 
 func initDiskInfo(monitorData *monitoringData) error{
 	partitions, err := disk.DiskPartitions(true)
 	monitorData.DiskStats = make(map[string]disk.DiskUsageStat)
 
-	if err != nil{
-		return err
-	}
+	if err == nil{
+		for d := range partitions {
+			if partitions[d].Device != "none"{
+				usage, err := disk.DiskUsage(partitions[d].Mountpoint)
 
-	for d := range partitions {
-		if partitions[d].Device != "none"{
-			usage, err := disk.DiskUsage(partitions[d].Mountpoint)
+				if err != nil {
+					continue
+				}
 
-			if err != nil {
-				continue
-			}
-
-			if usage != nil {
-				if !math.IsNaN(usage.UsedPercent){
-					monitorData.DiskStats[partitions[d].Device] = *usage
+				if usage != nil {
+					if !math.IsNaN(usage.UsedPercent){
+						monitorData.DiskStats[partitions[d].Device] = *usage
+					}
 				}
 			}
 		}
 	}
-	return nil
+
+	return err
 }
