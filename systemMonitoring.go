@@ -62,39 +62,21 @@ func NewMonitoringData(updateTime time.Duration) (monitorData monitoringData, er
 	//Host info
 	err = initHostInfo(&returnMonitoringData)
 
-	if err != nil {
-		return returnMonitoringData, err
-	}
-
 	//Memory info
 	err = initMemoryInfo(&returnMonitoringData)
-
-	if err != nil {
-		return returnMonitoringData, err
-	}
 
 	//CPU info
 	err = initCPUInfo(&returnMonitoringData)
 
-	if err != nil {
-		return returnMonitoringData, err
-	}
-
 	//Network info
 	netIOCounter, err := net.NetIOCounters(true)
 
-	if err != nil {
-		return returnMonitoringData, err
+	if netIOCounter != nil {
+		returnMonitoringData.NetworkIOCounter = netIOCounter
 	}
-
-	returnMonitoringData.NetworkIOCounter = netIOCounter
 
 	//Disk info
 	err = initDiskInfo(&returnMonitoringData)
-
-	if err != nil {
-		return returnMonitoringData, err
-	}
 
 	return returnMonitoringData, nil
 }
@@ -102,11 +84,6 @@ func NewMonitoringData(updateTime time.Duration) (monitorData monitoringData, er
 //JSON() converts a monitoringData to JSON
 func (self *monitoringData) JSON() (jsonString string, e error) {
 	b, err := json.Marshal(*self)
-
-	if err != nil {
-		return "", err
-	}
-
 	return string(b), err
 }
 
