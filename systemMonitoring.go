@@ -192,11 +192,7 @@ func initDiskInfo(monitorData *monitoringData) error{
 	if err == nil{
 		for d := range partitions {
 			if partitions[d].Device != "none"{
-				usage, err := disk.DiskUsage(partitions[d].Mountpoint)
-
-				if err != nil {
-					continue
-				}
+				usage, _ := disk.DiskUsage(partitions[d].Mountpoint)
 
 				if usage != nil {
 					if !math.IsNaN(usage.UsedPercent){
